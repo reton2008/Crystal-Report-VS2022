@@ -2,7 +2,7 @@
 
 ![Crystal Reports](https://img.shields.io/badge/Crystal%20Reports-SP34-blue) ![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.8-blue) ![Visual Studio](https://img.shields.io/badge/Visual%20Studio-2022-green) ![Oracle](https://img.shields.io/badge/Oracle-19c%2B-orange) ![ASP.NET MVC](https://img.shields.io/badge/ASP.NET-MVC%205-yellow)
 
-Welcome to the **Crystal Report Viewer**, an **ASP.NET MVC web application** built in **Visual Studio 2022** using **.NET Framework 4.8**. This project integrates **SAP Crystal Reports SP34** with an **Oracle database** to generate and display dynamic reports in a web browser. It uses an Oracle stored procedure (`GetCustomerData`) to fetch customer data, binds it to a Crystal Report, and renders it via a web-based `CrystalReportViewer`. Perfect for developers building web-based reporting solutions! 🚀
+Welcome to the **Crystal Report Viewer**, an **ASP.NET MVC web application** built in **Visual Studio 2022** using **.NET Framework 4.8**. This project integrates **SAP Crystal Reports SP34** with an **Oracle database** to generate and display dynamic user reports in a web browser. It uses the `GetReportData` stored procedure to fetch data from the `sec_user_profile` table, binds it to a Crystal Report, and renders it via a web-based `CrystalReportViewer`. Perfect for web-based reporting solutions! 🚀
 
 ---
 
@@ -33,20 +33,20 @@ Welcome to the **Crystal Report Viewer**, an **ASP.NET MVC web application** bui
 
 ## 📖 About the Project
 
-The **Crystal Report Viewer** is an ASP.NET MVC web application that fetches data from an **Oracle database** using a stored procedure, binds it to a **SAP Crystal Report** (`CustomerReport.rpt`), and displays it in a web view using the Crystal Reports web viewer. The application leverages a controller (e.g., `ReportController`) to handle report generation and a view to render the report in a browser, making it ideal for web-based reporting needs like invoices or data summaries.
+The **Crystal Report Viewer** is an ASP.NET MVC web application that fetches user data from an **Oracle database** using the `GetReportData` stored procedure, binds it to a **SAP Crystal Report** (`CustomerReport.rpt`), and displays it in a web view. The application uses a controller (`ReportController`) to handle report generation and a view to render the report in a browser, ideal for generating user profile reports or similar web-based summaries.
 
 ### Why Use This Project? 🤔
-- Learn to integrate **Oracle 19c+** with Crystal Reports in ASP.NET MVC 5.
-- Use stored procedures for secure and efficient data retrieval.
-- Build professional, browser-based reports with export capabilities.
+- Integrate **Oracle 19c+** with Crystal Reports in ASP.NET MVC 5.
+- Use stored procedures for secure data retrieval.
+- Deliver professional, browser-based reports with export capabilities.
 
 ---
 
 ## 🌟 Features
 
-- **Oracle Database Integration** 🗄️: Fetches data via the `GetCustomerData` stored procedure.
-- **Dynamic Dataset Creation** 📊: Populates a `DataTable` from Oracle query results.
-- **Crystal Reports Rendering** 📈: Uses `ReportDocument` to bind and display `CustomerReport.rpt` in a web view.
+- **Oracle Database Integration** 🗄️: Fetches data via the `GetReportData` stored procedure.
+- **Dynamic Dataset Creation** 📊: Populates a `DataTable` with user data (`user_id`, `user_nm`, `user_descrip`).
+- **Crystal Reports Rendering** 📈: Uses `ReportDocument` to bind and display `CustomerReport.rpt`.
 - **ASP.NET MVC Architecture** 🌐: Leverages controllers and views for report delivery.
 - **Export Capabilities** 📄: Supports exporting reports to PDF, Excel, or other formats.
 
@@ -63,7 +63,7 @@ The **Crystal Report Viewer** is an ASP.NET MVC web application that fetches dat
 - **Oracle Database** (19c or higher, Express/Enterprise Edition).
 - **Oracle.ManagedDataAccess** NuGet package (v21.9.0+).
 - **Git** (for cloning the repository).
-- **IIS Express** (included with Visual Studio) or **IIS** for local/development hosting.
+- **IIS Express** (included with Visual Studio) or **IIS** for hosting.
 
 ---
 
@@ -87,8 +87,7 @@ Follow these steps to set up the project locally.
    - Complete the installation.
 4. Install **Crystal Reports Runtime SP34 (64-bit)** for web hosting.
 5. Verify:
-   - Open Visual Studio 2022.
-   - In Add > New Item > Reporting, confirm the “Crystal Report” template appears.
+   - In Visual Studio 2022, Add > New Item > Reporting, confirm “Crystal Report” template.
 
 ### Step 3: Set Up Oracle Database
 1. Install **Oracle Database 19c+** or use an existing instance.
@@ -97,20 +96,22 @@ Follow these steps to set up the project locally.
    CREATE USER REPORT_USER IDENTIFIED BY password;
    GRANT CONNECT, RESOURCE, CREATE SESSION TO REPORT_USER;
    ```
-3. Create the `Customers` table:
+3. Create the `rpt_user_table` table (for demo purposes):
    ```sql
-   CREATE TABLE Customers (
-       CustomerID NUMBER PRIMARY KEY,
-       CustomerName VARCHAR2(100),
-       Email VARCHAR2(100),
-       Address VARCHAR2(200)
+   CREATE TABLE rpt_user_table (
+       user_id NVARCHAR2(15) NOT NULL,
+       user_nm NVARCHAR2(50) NOT NULL,
+       user_descrip NVARCHAR2(100) NOT NULL
    );
-   ```
-4. Insert sample data:
-   ```sql
-   INSERT INTO Customers VALUES (1, 'John Doe', 'john.doe@example.com', '123 Main St');
-   INSERT INTO Customers VALUES (2, 'Jane Smith', 'jane.smith@example.com', '456 Oak Ave');
+
+   INSERT INTO rpt_user_table (user_id, user_nm, user_descrip) VALUES ('01', 'user_01', 'admin');
+   INSERT INTO rpt_user_table (user_id, user_nm, user_descrip) VALUES ('02', 'user_02', 'User');
+   INSERT INTO rpt_user_table (user_id, user_nm, user_descrip) VALUES ('03', 'user_03', 'Manager');
    COMMIT;
+   ```
+4. Note: The `GetReportData` procedure queries `sec_user_profile`. Ensure this table exists with the same schema (`user_id`, `user_nm`, `user_descrip`) or modify the procedure to use `rpt_user_table`:
+   ```sql
+   -- If using rpt_user_table, update procedure (see Oracle Stored Procedure section)
    ```
 5. Configure TNS in `tnsnames.ora`:
    ```
@@ -148,127 +149,133 @@ Follow these steps to set up the project locally.
 
 ## 🗄️ Oracle Stored Procedure
 
-The application uses the `GetCustomerData` stored procedure to fetch data from the `Customers` table.
+The application uses the `GetReportData` stored procedure to fetch user data.
 
 1. **Create the Stored Procedure**:
    - Connect to Oracle (e.g., via SQL Developer).
    - Execute:
      ```sql
-     CREATE OR REPLACE PROCEDURE GetCustomerData (p_cursor OUT SYS_REFCURSOR)
-     AS
+     CREATE OR REPLACE PROCEDURE GetReportData(p_refCursor OUT SYS_REFCURSOR) AS
      BEGIN
-         OPEN p_cursor FOR
-             SELECT CustomerID, CustomerName, Email, Address
-             FROM Customers;
-     EXCEPTION
-         WHEN OTHERS THEN
-             RAISE_APPLICATION_ERROR(-20001, 'Error fetching customer data: ' || SQLERRM);
-     END GetCustomerData;
+         OPEN p_refCursor FOR
+             SELECT user_id, user_nm, user_descrip
+             FROM sec_user_profile;
+     END GetReportData;
      /
      ```
 2. **Grant Execute Permission**:
    ```sql
-   GRANT EXECUTE ON GetCustomerData TO REPORT_USER;
+   GRANT EXECUTE ON GetReportData TO REPORT_USER;
    ```
+3. **Note on Table Discrepancy**:
+   - The procedure queries `sec_user_profile`, but the provided table is `rpt_user_table`. If `sec_user_profile` doesn’t exist, modify the procedure to use `rpt_user_table`:
+     ```sql
+     CREATE OR REPLACE PROCEDURE GetReportData(p_refCursor OUT SYS_REFCURSOR) AS
+     BEGIN
+         OPEN p_refCursor FOR
+             SELECT user_id, user_nm, user_descrip
+             FROM rpt_user_table;
+     END GetReportData;
+     /
+     ```
+   - Ensure the table used matches the report schema.
 
 ---
 
 ## 📊 Dataset Creation
 
-The application fetches data from Oracle using `GetCustomerData` and populates a `DataTable` in a controller (e.g., `ReportController`).
+The application fetches data from Oracle using `GetReportData` and populates a `DataTable` in `ReportController`.
 
 1. **Code in `ReportController.cs`**:
-   - Example controller action:
-     ```csharp
-     using Oracle.ManagedDataAccess.Client;
-     using CrystalDecisions.CrystalReports.Engine;
-     using System.Data;
-     using System.Web.Mvc;
+   ```csharp
+   using Oracle.ManagedDataAccess.Client;
+   using CrystalDecisions.CrystalReports.Engine;
+   using System.Data;
+   using System.Web.Mvc;
 
-     namespace Crystal_Report_VS2022.Controllers
-     {
-         public class ReportController : Controller
-         {
-             public ActionResult ViewReport()
-             {
-                 string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["OracleConnection"].ConnectionString;
-                 DataTable dt = new DataTable("Customer");
+   namespace Crystal_Report_VS2022.Controllers
+   {
+       public class ReportController : Controller
+       {
+           public ActionResult ViewReport()
+           {
+               string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["OracleConnection"].ConnectionString;
+               DataTable dt = new DataTable("UserProfile");
 
-                 try
-                 {
-                     using (OracleConnection conn = new OracleConnection(connectionString))
-                     {
-                         conn.Open();
-                         using (OracleCommand cmd = new OracleCommand("GetCustomerData", conn))
-                         {
-                             cmd.CommandType = CommandType.StoredProcedure;
-                             cmd.Parameters.Add("p_cursor", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+               try
+               {
+                   using (OracleConnection conn = new OracleConnection(connectionString))
+                   {
+                       conn.Open();
+                       using (OracleCommand cmd = new OracleCommand("GetReportData", conn))
+                       {
+                           cmd.CommandType = CommandType.StoredProcedure;
+                           cmd.Parameters.Add("p_refCursor", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
 
-                             using (OracleDataAdapter adapter = new OracleDataAdapter(cmd))
-                             {
-                                 adapter.Fill(dt);
-                             }
-                         }
-                     }
+                           using (OracleDataAdapter adapter = new OracleDataAdapter(cmd))
+                           {
+                               adapter.Fill(dt);
+                           }
+                       }
+                   }
 
-                     DataSet ds = new DataSet();
-                     ds.Tables.Add(dt);
+                   DataSet ds = new DataSet();
+                   ds.Tables.Add(dt);
 
-                     ReportDocument report = new ReportDocument();
-                     report.Load(Server.MapPath("~/Reports/CustomerReport.rpt"));
-                     report.SetDataSource(ds);
+                   ReportDocument report = new ReportDocument();
+                   report.Load(Server.MapPath("~/Reports/CustomerReport.rpt"));
+                   report.SetDataSource(ds);
 
-                     ViewBag.ReportSource = report;
-                     return View();
-                 }
-                 catch (Exception ex)
-                 {
-                     ViewBag.Error = $"Error: {ex.Message}";
-                     return View("Error");
-                 }
-             }
-         }
-     }
-     ```
+                   ViewBag.ReportSource = report;
+                   return View();
+               }
+               catch (Exception ex)
+               {
+                   ViewBag.Error = $"Error: {ex.Message}";
+                   return View("Error");
+               }
+           }
+       }
+   }
+   ```
 
 2. **View Code (`ViewReport.cshtml`)**:
-   - Add the Crystal Reports viewer to the view:
-     ```cshtml
-     @using CrystalDecisions.CrystalReports.Engine
-     @model dynamic
+   ```cshtml
+   @using CrystalDecisions.CrystalReports.Engine
+   @model dynamic
 
-     @{
-         ViewBag.Title = "Customer Report";
-     }
+   @{
+       ViewBag.Title = "User Report";
+   }
 
-     <h2>Customer Report</h2>
-     @if (ViewBag.Error != null)
-     {
-         <div class="alert alert-danger">@ViewBag.Error</div>
-     }
-     else
-     {
-         <div>
-             @Html.Raw(CrystalDecisions.CrystalReports.Engine.ReportDocument.GetHtmlContent(ViewBag.ReportSource as ReportDocument))
-         </div>
-     }
-     ```
+   <h2>User Report</h2>
+   @if (ViewBag.Error != null)
+   {
+       <div class="alert alert-danger">@ViewBag.Error</div>
+   }
+   else
+   {
+       <div>
+           @Html.Raw(CrystalDecisions.CrystalReports.Engine.ReportDocument.GetHtmlContent(ViewBag.ReportSource as ReportDocument))
+       </div>
+   }
+   ```
 
 3. **Configuration**:
-   - Update the connection string in `Web.config`.
-   - Ensure the `Reports` folder contains `CustomerReport.rpt`.
+   - Update `Web.config` connection string.
+   - Ensure `Reports/CustomerReport.rpt` exists.
 
 ---
 
 ## 📄 Report File Generation
 
-The project uses `CustomerReport.rpt` to display Oracle data in a web view.
+The project uses `CustomerReport.rpt` to display user data (`user_id`, `user_nm`, `user_descrip`).
 
 1. **Open the Report**:
    - Double-click `CustomerReport.rpt` in Solution Explorer to open in **Crystal Reports Designer**.
 
 2. **Report Schema**:
-   - Bound to the `Customer` DataTable with fields: `CustomerID`, `CustomerName`, `Email`, `Address`.
+   - Bound to the `UserProfile` DataTable with fields: `user_id`, `user_nm`, `user_descrip`.
    - Includes header, details section, and footer.
 
 3. **Creating a New Report**:
@@ -276,18 +283,18 @@ The project uses `CustomerReport.rpt` to display Oracle data in a web view.
    - Name it (e.g., `NewReport.rpt`).
    - In Crystal Reports Wizard:
      - Select “Using the Report Wizard” > “Standard Report.”
-     - Choose “ADO.NET (XML)” and export the dataset to XML:
+     - Choose “ADO.NET (XML)” and export dataset:
        ```csharp
        ds.WriteXml(Server.MapPath("~/dataset.xml"));
        ```
-     - Design the layout (drag fields, add headers).
+     - Design layout (drag fields, add headers).
    - Update `ReportController.cs`:
      ```csharp
      report.Load(Server.MapPath("~/Reports/NewReport.rpt"));
      ```
 
 4. **Updating the Report**:
-   - If the dataset changes, refresh the schema:
+   - If dataset changes, refresh schema:
      - Open `CustomerReport.rpt` > Database > Database Expert > Refresh.
    - Save and rebuild.
 
@@ -296,7 +303,7 @@ The project uses `CustomerReport.rpt` to display Oracle data in a web view.
 ## 🚀 Usage
 
 1. **Run the Application**:
-   - Set `Crystal-Report-VS2022` as the startup project.
+   - Set `Crystal-Report-VS2022` as startup project.
    - Press **F5** to run with IIS Express.
    - Navigate to `/Report/ViewReport` (e.g., `http://localhost:port/Report/ViewReport`).
 
@@ -304,14 +311,14 @@ The project uses `CustomerReport.rpt` to display Oracle data in a web view.
    - The report displays in the browser with navigation, zoom, and export options.
 
 3. **Export the Report**:
-   - Add an export action in `ReportController.cs`:
+   - Add export action in `ReportController.cs`:
      ```csharp
      public ActionResult ExportReport()
      {
          // Same data fetching logic as ViewReport
          // ...
          Stream stream = report.ExportToStream(CrystalDecisions.Shared.ExportFormatType.PortableDocFormat);
-         return File(stream, "application/pdf", "CustomerReport.pdf");
+         return File(stream, "application/pdf", "UserReport.pdf");
      }
      ```
 
@@ -321,16 +328,16 @@ The project uses `CustomerReport.rpt` to display Oracle data in a web view.
 
 1. **Publish to IIS**:
    - Right-click project > Publish > Web Server (IIS).
-   - Choose a folder or server, then publish.
+   - Choose folder or server, then publish.
 2. **Install Crystal Reports Runtime**:
    - Install **Crystal Reports Runtime SP34 (64-bit)** on the server.
 3. **Configure Oracle**:
-   - Ensure the server can connect to the Oracle database (e.g., via TNS or direct connection string).
-   - Install `Oracle.ManagedDataAccess` or Oracle Client on the server.
+   - Ensure server connects to Oracle (TNS or direct connection string).
+   - Install `Oracle.ManagedDataAccess` or Oracle Client.
 4. **Update Web.config**:
-   - Set the correct connection string for the production database.
+   - Set production database connection string.
 5. **Set Permissions**:
-   - Grant IIS application pool access to the `Reports` folder.
+   - Grant IIS application pool access to `Reports` folder.
 
 ---
 
@@ -347,11 +354,11 @@ Crystal-Report-VS2022/
 │   │   │   ├── ViewReport.cshtml   # Displays report
 │   ├── Reports/
 │   │   ├── CustomerReport.rpt      # Crystal Report file
-│   ├── Web.config                  # Configuration (connection strings)
+│   ├── Web.config                  # Configuration
 │   ├── Packages/                   # NuGet packages
 ├── Scripts/
-│   ├── CreateCustomerTable.sql     # Creates Customers table
-│   ├── GetCustomerData.sql         # Stored procedure
+│   ├── CreateRptUserTable.sql      # Creates rpt_user_table
+│   ├── GetReportData.sql           # Stored procedure
 ├── Images/                         # Screenshots (add your own)
 ├── README.md                       # Project documentation
 ```
@@ -362,20 +369,19 @@ Crystal-Report-VS2022/
 
 - **Crystal Report Viewer Not Loading** ⚠️:
   - Ensure **Crystal Reports Runtime SP34 (64-bit)** is installed.
-  - Verify `CrystalDecisions.*` assemblies are in the `bin` folder.
+  - Verify `CrystalDecisions.*` assemblies in `bin`.
 - **Designer Fails to Load** 🚫:
   - Reinstall **Crystal Reports SP34 64-bit** as administrator.
   - Check Windows 11 compatibility ([SAP KBA 3204578](https://userapps.support.sap.com/sap/support/knowledge/en/3204578)).
 - **Oracle Connection Errors** 🔌:
   - Validate `Web.config` connection string.
   - Ensure `Oracle.ManagedDataAccess` is installed.
-  - Check TNS configuration or network access.
+  - Check TNS or network access.
 - **Stored Procedure Errors** 🚨:
-  - Verify `GetCustomerData` exists and has execute permissions.
-  - Check `SYS_REFCURSOR` parameter.
+  - Verify `GetReportData` exists and has permissions.
+  - Ensure `sec_user_profile` exists or update to `rpt_user_table`.
 - **HTTP Errors** 🌐:
-  - Ensure IIS is configured correctly.
-  - Check application pool settings (.NET CLR v4.0, Integrated pipeline).
+  - Check IIS configuration (.NET CLR v4.0, Integrated pipeline).
 - **Build Errors** 🛑:
   - Confirm **.NET Framework 4.8** is installed.
   - Clean and rebuild: Build > Clean Solution, then Ctrl+Shift+B.
@@ -387,7 +393,7 @@ Crystal-Report-VS2022/
 Contributions are welcome! To contribute:
 1. Fork the repository.
 2. Create a feature branch: `git checkout -b feature/new-feature`.
-3. Commit changes: `git commit -m "Add new feature"`.
+3. Commit: `git commit -m "Add new feature"`.
 4. Push: `git push origin feature/new-feature`.
 5. Open a pull request.
 
@@ -414,7 +420,7 @@ Licensed under the **MIT License** - see [LICENSE](LICENSE).
 ## 📬 Contact
 
 - **GitHub**: [reton2008](https://github.com/reton2008)
-- **Email**: reton2008@example.com (replace with your email)
+- **Email**: reton2008@gmail.com (replace with your email)
 
 File issues or feature requests on [GitHub Issues](https://github.com/reton2008/Crystal-Report-VS2022/issues).
 
