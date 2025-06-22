@@ -1,0 +1,56 @@
+﻿//using AccessData;
+using CrystalDecisions.CrystalReports.Engine;
+using CrystalDecisions.Shared;
+using System;
+using System.Data;
+using System.Data.OracleClient;
+namespace CrystalReportTutorial
+{
+    public partial class ReportPage : System.Web.UI.Page
+    {
+        //user_information_class user_information_class_param = new user_information_class();
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if (!IsPostBack)
+            {
+                LoadReport();
+            }
+        }
+
+        private void LoadReport()
+        {
+            // Load template data for report
+            DataSet ds = GetTemplateData();
+            //DataTable dt = user_information_class_param.Get_User_Basic_InforamtionDataSet();
+            // Load the Crystal Report
+            ReportDocument reportDocument = new ReportDocument();
+            reportDocument.Load(Server.MapPath("~/EmployeeReport.rpt"));
+            reportDocument.SetDataSource(ds.Tables[0]);
+
+            // Set the report to CrystalReportViewer
+            CrystalReportViewer1.ReportSource = reportDocument;
+
+            // Enable export options (download functionality)
+            reportDocument.ExportToHttpResponse(ExportFormatType.PortableDocFormat, Response, true, "EmployeeReport");
+        }
+
+        private DataSet GetTemplateData()
+        {
+            DataSet ds = new DataSet();
+            DataTable dt = new DataTable();
+
+            dt.Columns.Add("EmployeeID", typeof(int));
+            dt.Columns.Add("Name", typeof(string));
+            dt.Columns.Add("Position", typeof(string));
+
+            // Adding some template data
+            dt.Rows.Add(1, "John Doe", "Manager");
+            dt.Rows.Add(2, "Jane Smith", "Developer");
+            dt.Rows.Add(3, "Tom Brown", "Designer");
+            dt.Rows.Add(3, "Kamrul Hasan", "EO");
+
+            ds.Tables.Add(dt);
+            return ds;
+        }
+    }
+}
